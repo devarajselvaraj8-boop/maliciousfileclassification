@@ -1,0 +1,21 @@
+{
+  "created_at": "2026-09-30T10:52:47.417998",
+  "feature_version": 2,
+  "feature_dimension": 2381,
+  "train_samples": 20000,
+  "train_distribution": {
+    "0": 10000,
+    "1": 10000
+  },
+  "test_samples": 5000,
+  "test_distribution": {
+    "0": 2500,
+    "1": 2500
+  },
+  "files": {
+    "X_train": "X_train.dat",
+    "y_train": "y_train.dat",
+    "X_test": "X_test.dat",
+    "y_test": "y_test.dat"
+  }
+}

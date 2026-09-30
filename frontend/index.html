@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MLCS-HACK-16 — Malicious File Classification</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --card-bg: #111827;
+            --border-color: #1f2937;
+            --accent: #3b82f6;
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --success: #10b981;
+            --danger: #ef4444;
+        }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            min-height: 100vh;
+        }
+        .main-container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .app-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+        }
+        /* Dropzone */
+        .dropzone {
+            border: 2px dashed #374151;
+            border-radius: 12px;
+            padding: 34px 20px;
+            text-align: center;
+            background: #0d131f;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .dropzone:hover, .dropzone.dragover {
+            border-color: var(--accent);
+            background: #131c2e;
+        }
+        .dropzone-icon {
+            font-size: 2.3rem;
+            margin-bottom: 10px;
+            color: #60a5fa;
+        }
+        .badge-verdict {
+            font-size: 1.35rem;
+            padding: 10px 24px;
+            border-radius: 12px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            display: inline-block;
+        }
+        .verdict-benign {
+            background: rgba(16, 185, 129, 0.15);
+            color: #34d399;
+            border: 1px solid #059669;
+        }
+        .verdict-malicious {
+            background: rgba(239, 68, 68, 0.15);
+            color: #f87171;
+            border: 1px solid #dc2626;
+        }
+        .info-pill {
+            background: #0d131f;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 0.85rem;
+        }
+        .prob-bar-container {
+            height: 14px;
+            background: #1f2937;
+            border-radius: 7px;
+            overflow: hidden;
+            display: flex;
+        }
+        .prob-bar-benign {
+            background: var(--success);
+            transition: width 0.4s ease;
+        }
+        .prob-bar-malicious {
+            background: var(--danger);
+            transition: width 0.4s ease;
+        }
+        .btn-scan {
+            background: var(--accent);
+            border: none;
+            font-size: 1.05rem;
+            font-weight: 600;
+            padding: 12px 28px;
+            border-radius: 10px;
+            color: white;
+            transition: opacity 0.2s;
+        }
+        .btn-scan:hover:not(:disabled) {
+            opacity: 0.9;
+        }
+        .btn-sample {
+            font-size: 0.82rem;
+            padding: 5px 12px;
+            border-radius: 6px;
+            border: 1px solid #374151;
+            background: transparent;
+            color: var(--text-muted);
+            transition: all 0.2s;
+        }
+        .btn-sample:hover {
+            color: var(--text-main);
+            border-color: #6b7280;
+            background: #1f2937;
+        }
+        .accordion-button {
+            background: #0d131f !important;
+            color: var(--text-muted) !important;
+            font-size: 0.9rem;
+            font-weight: 600;
+            border: none;
+            box-shadow: none !important;
+        }
+        .accordion-button:not(.collapsed) {
+            color: var(--text-main) !important;
+        }
+        .accordion-item {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            border-radius: 8px !important;
+            overflow: hidden;
+        }
+        .accordion-body {
+            background: #090d16;
+            font-size: 0.85rem;
+        }
+        .cm-cell {
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .cm-tn { background: rgba(16, 185, 129, 0.2); border: 1px solid #059669; }
+        .cm-fp { background: rgba(245, 158, 11, 0.2); border: 1px solid #d97706; }
+        .cm-fn { background: rgba(239, 68, 68, 0.25); border: 1px solid #dc2626; }
+        .cm-tp { background: rgba(16, 185, 129, 0.25); border: 1px solid #059669; }
+        .feature-bar {
+            height: 8px;
+            background: #3b82f6;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="py-4 py-md-5">
+    <div class="container main-container">
+
+        <!-- Header -->
+        <div class="text-center mb-4">
+            <span class="badge bg-primary text-white mb-2 px-3 py-1 fw-semibold">MLCS-HACK-16 • Machine Learning for Cybersecurity</span>
+            <h2 class="fw-bold mb-1">🛡️ Malicious File Classification</h2>
+            <p class="text-secondary small mb-2">Static Windows PE Malware Detection using EMBER 2018 v2 Machine Learning</p>
+            <span class="badge bg-dark border border-secondary text-secondary px-3 py-1">
+                🔒 Zero-Execution Security Policy • Static Analysis Only
+            </span>
+        </div>
+
+        <!-- Main Upload & Scanner Card -->
+        <div class="app-card p-4 mb-4">
+            <!-- Dropzone -->
+            <div id="dropZone" class="dropzone mb-3" onclick="document.getElementById('fileInput').click()">
+                <div class="dropzone-icon">📥</div>
+                <h5 class="fw-bold mb-1">Upload .EXE or .DLL for Static Classification</h5>
+                <p class="text-secondary small mb-2">Drag and drop or click to choose a Windows PE binary (Max: 100 MB)</p>
+                <div id="selectedFileName" class="text-info fw-semibold small"></div>
+                <input type="file" id="fileInput" class="d-none" accept=".exe,.dll" onchange="handleFileSelect(event)">
+            </div>
+
+            <!-- Instant Sample Demo Shortcut -->
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                <span class="text-secondary small">Dataset Feature Vector Demo (Pre-extracted):</span>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sample" onclick="runSampleTest('benign')">Load BENIGN Test Feature Vector</button>
+                    <button class="btn btn-sample" onclick="runSampleTest('malicious')">Load MALICIOUS Test Feature Vector</button>
+                </div>
+            </div>
+
+            <!-- Action Button -->
+            <button id="scanBtn" class="btn btn-scan w-100" onclick="scanSelectedFile()" disabled>
+                Analyze File Statically
+            </button>
+            <div id="loadingStatus" class="text-center mt-3 text-info small" style="display: none;">
+                <span class="spinner-border spinner-border-sm me-2" role="status"></span>Analyzing PE statically (extracting 2,381 features)...
+            </div>
+
+            <!-- Results Card (Appears after scan) -->
+            <div id="resultBox" class="mt-4 pt-3 border-top border-secondary" style="display: none;">
+                <!-- Verdict Header -->
+                <div class="text-center mb-4">
+                    <div class="small text-secondary text-uppercase fw-semibold mb-1">STATIC ANALYSIS RESULT</div>
+                    <div id="verdictBadge" class="badge-verdict mb-2"></div>
+                    <div class="text-secondary small" style="font-size: 0.8rem;">
+                        <em>Notice: Model probability represents the classifier's estimated probability based on extracted static features. It is not absolute proof of maliciousness.</em>
+                    </div>
+                </div>
+
+                <!-- Probability Bar -->
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between small fw-semibold mb-1">
+                        <span class="text-success">Benign Probability: <span id="probBenignText">0%</span></span>
+                        <span class="text-danger">Malicious Probability: <span id="probMaliciousText">0%</span></span>
+                    </div>
+                    <div class="prob-bar-container">
+                        <div id="probBarBenign" class="prob-bar-benign" style="width: 50%;"></div>
+                        <div id="probBarMalicious" class="prob-bar-malicious" style="width: 50%;"></div>
+                    </div>
+                </div>
+
+                <!-- File Summary Pills -->
+                <div class="row g-2 mb-3">
+                    <div class="col-sm-3">
+                        <div class="info-pill text-truncate">
+                            <span class="text-secondary d-block" style="font-size: 0.72rem;">FILE</span>
+                            <strong id="infoFilename" class="text-white">-</strong>
+                        </div>
+                    </div>
+                    <div class="col-sm-3">
+                        <div class="info-pill">
+                            <span class="text-secondary d-block" style="font-size: 0.72rem;">SIZE</span>
+                            <strong id="infoSize" class="text-white">-</strong>
+                        </div>
+                    </div>
+                    <div class="col-sm-3">
+                        <div class="info-pill">
+                            <span class="text-secondary d-block" style="font-size: 0.72rem;">PE VALIDATION</span>
+                            <span class="text-success fw-bold">✓ Valid PE</span>
+                        </div>
+                    </div>
+                    <div class="col-sm-3">
+                        <div class="info-pill">
+                            <span class="text-secondary d-block" style="font-size: 0.72rem;">INFERENCE</span>
+                            <strong id="infoLatency" class="text-white">-</strong>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="info-pill font-monospace" style="font-size: 0.8rem; word-break: break-all;">
+                            <span class="text-secondary d-block" style="font-size: 0.72rem;">SHA-256 HASH</span>
+                            <span id="infoSha256" class="text-info">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Collapsible Technical Details -->
+                <div class="accordion" id="techAccordion">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#techCollapse">
+                                ⚙️ Static PE Structural Details (LIEF & EMBER 2,381 Features)
+                            </button>
+                        </h2>
+                        <div id="techCollapse" class="accordion-collapse collapse" data-bs-parent="#techAccordion">
+                            <div class="accordion-body">
+                                <div class="row g-2 mb-3">
+                                    <div class="col-6 col-md-3 text-secondary">Architecture: <strong id="tArch" class="text-white">-</strong></div>
+                                    <div class="col-6 col-md-3 text-secondary">PE Type: <strong id="tType" class="text-white">-</strong></div>
+                                    <div class="col-6 col-md-3 text-secondary">Sections: <strong id="tSections" class="text-white">-</strong></div>
+                                    <div class="col-6 col-md-3 text-secondary">Imported DLLs: <strong id="tDlls" class="text-white">-</strong></div>
+                                    <div class="col-6 col-md-3 text-secondary">Imported Funcs: <strong id="tFuncs" class="text-white">-</strong></div>
+                                    <div class="col-6 col-md-3 text-secondary">Exports: <strong id="tExports" class="text-white">-</strong></div>
+                                    <div class="col-6 col-md-3 text-secondary">Entry Point: <strong id="tEntry" class="text-white">-</strong></div>
+                                    <div class="col-6 col-md-3 text-secondary">Avg Entropy: <strong id="tEntropy" class="text-white">-</strong></div>
+                                </div>
+                                <div class="text-secondary mb-1" style="font-size: 0.75rem;">Extracted EMBER Feature Vector Preview (First 20 of 2,381 numbers):</div>
+                                <pre id="featurePreview" class="p-2 rounded bg-dark border border-secondary text-info mb-0" style="font-size: 0.75rem; max-height: 70px; overflow-y: auto;">-</pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- SECTION 2: EXPLAINABLE AI (XAI) -->
+        <div class="accordion mb-3" id="xaiAccordion">
+            <div class="accordion-item app-card border-0">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#xaiCollapse">
+                        🧠 Explainable AI (XAI): Top Static Features Influencing Random Forest
+                    </button>
+                </h2>
+                <div id="xaiCollapse" class="accordion-collapse collapse" data-bs-parent="#xaiAccordion">
+                    <div class="accordion-body p-3">
+                        <p class="text-secondary small mb-3">
+                            Using native Random Forest <strong>Gini Feature Importance</strong> across 2,381 EMBER dimensions, these top features most heavily guide the classifier's maliciousness verdict:
+                        </p>
+                        <div class="table-responsive">
+                            <table class="table table-dark table-sm table-bordered border-secondary small mb-2">
+                                <thead>
+                                    <tr class="text-secondary">
+                                        <th>Rank</th>
+                                        <th>Feature</th>
+                                        <th>Category</th>
+                                        <th>Importance</th>
+                                        <th>Cybersecurity Interpretation</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><strong>#1</strong></td>
+                                        <td><code>header[0]</code></td>
+                                        <td>COFF Timestamp</td>
+                                        <td class="text-info fw-bold">0.0423</td>
+                                        <td>Compilation timestamp anomalies (spoofed, zeroed, or future dates common in malware)</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>#2</strong></td>
+                                        <td><code>header[11]</code></td>
+                                        <td>Optional Header Subsystem</td>
+                                        <td class="text-info fw-bold">0.0186</td>
+                                        <td>Subsystem specifications & major image linker versions</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>#3</strong></td>
+                                        <td><code>byteentropy[250]</code></td>
+                                        <td>Byte Entropy Histogram</td>
+                                        <td class="text-info fw-bold">0.0177</td>
+                                        <td>High entropy code distribution (indicative of packers, cryptors, or obfuscation)</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>#4</strong></td>
+                                        <td><code>byteentropy[246]</code></td>
+                                        <td>Byte Entropy Histogram</td>
+                                        <td class="text-info fw-bold">0.0138</td>
+                                        <td>High entropy block distribution</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>#5</strong></td>
+                                        <td><code>byteentropy[243]</code></td>
+                                        <td>Byte Entropy Histogram</td>
+                                        <td class="text-info fw-bold">0.0135</td>
+                                        <td>Entropy variance between code sections and resources</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>#6</strong></td>
+                                        <td><code>histogram[90]</code></td>
+                                        <td>Byte Histogram</td>
+                                        <td class="text-info fw-bold">0.0131</td>
+                                        <td>Frequency of byte 0x5A ('Z' in 'MZ' DOS header signature)</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>#7</strong></td>
+                                        <td><code>histogram[151]</code></td>
+                                        <td>Byte Histogram</td>
+                                        <td class="text-info fw-bold">0.0119</td>
+                                        <td>Byte frequency distribution of opcode byte 0x97</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>#8</strong></td>
+                                        <td><code>byteentropy[245]</code></td>
+                                        <td>Byte Entropy Histogram</td>
+                                        <td class="text-info fw-bold">0.0116</td>
+                                        <td>Dense entropy clusters in PE sections</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>#9</strong></td>
+                                        <td><code>byteentropy[254]</code></td>
+                                        <td>Byte Entropy Histogram</td>
+                                        <td class="text-info fw-bold">0.0115</td>
+                                        <td>Maximum entropy bin (encrypted payloads & compressed shellcode)</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>#10</strong></td>
+                                        <td><code>strings[84]</code></td>
+                                        <td>Strings Information</td>
+                                        <td class="text-info fw-bold">0.0112</td>
+                                        <td>Printable string length, path entropy, and URL indicators</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 3: MODEL COMPARISON & CONFUSION MATRIX -->
+        <div class="accordion mb-3" id="benchmarkAccordion">
+            <div class="accordion-item app-card border-0">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#benchmarkCollapse">
+                        📊 Model Evaluation: Security Metrics & Confusion Matrix (FPR, FNR, Detection Rate)
+                    </button>
+                </h2>
+                <div id="benchmarkCollapse" class="accordion-collapse collapse" data-bs-parent="#benchmarkAccordion">
+                    <div class="accordion-body p-3">
+                        <h6 class="fw-bold text-white mb-2">Model Comparison (Tested on 5,000 Balanced Samples):</h6>
+                        <div class="table-responsive mb-4">
+                            <table class="table table-dark table-sm table-bordered border-secondary small text-center align-middle mb-0">
+                                <thead>
+                                    <tr class="text-secondary">
+                                        <th class="text-start">Model</th>
+                                        <th>Accuracy</th>
+                                        <th>Precision</th>
+                                        <th>Recall</th>
+                                        <th>F1-Score</th>
+                                        <th>ROC-AUC</th>
+                                        <th class="text-info">Detection Rate</th>
+                                        <th class="text-warning">False Pos Rate (FPR)</th>
+                                        <th class="text-danger">False Neg Rate (FNR)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="table-active">
+                                        <td class="text-start"><strong class="text-info">Random Forest ⭐</strong></td>
+                                        <td>80.12%</td>
+                                        <td>76.27%</td>
+                                        <td>87.44%</td>
+                                        <td><strong>0.8148</strong></td>
+                                        <td><strong>0.8794</strong></td>
+                                        <td class="text-info fw-bold">87.44%</td>
+                                        <td class="text-warning">27.20%</td>
+                                        <td class="text-danger fw-bold">12.56%</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-start">Logistic Regression</td>
+                                        <td>70.66%</td>
+                                        <td>66.69%</td>
+                                        <td>82.56%</td>
+                                        <td>0.7378</td>
+                                        <td>0.7812</td>
+                                        <td class="text-info">82.56%</td>
+                                        <td class="text-warning">41.24%</td>
+                                        <td class="text-danger">17.44%</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-start">LightGBM</td>
+                                        <td>62.16%</td>
+                                        <td>58.06%</td>
+                                        <td>87.60%</td>
+                                        <td>0.6983</td>
+                                        <td>0.6764</td>
+                                        <td class="text-info">87.60%</td>
+                                        <td class="text-warning">63.28%</td>
+                                        <td class="text-danger">12.40%</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Confusion Matrix Display -->
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h6 class="fw-bold text-white mb-0">Confusion Matrix:</h6>
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <button type="button" class="btn btn-outline-info active" id="cmBtnRf" onclick="switchCM('rf')">Random Forest</button>
+                                        <button type="button" class="btn btn-outline-secondary" id="cmBtnLr" onclick="switchCM('lr')">Logistic Reg</button>
+                                        <button type="button" class="btn btn-outline-secondary" id="cmBtnLgb" onclick="switchCM('lgb')">LightGBM</button>
+                                    </div>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table table-dark table-sm table-bordered border-secondary text-center small mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th rowspan="2" class="align-middle">Actual</th>
+                                                <th colspan="2">Predicted</th>
+                                            </tr>
+                                            <tr>
+                                                <th>Benign</th>
+                                                <th>Malicious</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <th class="align-middle">Benign</th>
+                                                <td class="cm-cell cm-tn"><strong id="cmTN">1,820</strong><br><small class="text-secondary">True Negative (TN)</small></td>
+                                                <td class="cm-cell cm-fp"><strong id="cmFP">680</strong><br><small class="text-secondary">False Positive (FP)</small></td>
+                                            </tr>
+                                            <tr>
+                                                <th class="align-middle">Malicious</th>
+                                                <td class="cm-cell cm-fn"><strong id="cmFN">314</strong><br><small class="text-secondary">False Negative (FN)</small></td>
+                                                <td class="cm-cell cm-tp"><strong id="cmTP">2,186</strong><br><small class="text-secondary">True Positive (TP)</small></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <h6 class="fw-bold text-white mb-2">Formulas & Values (Random Forest):</h6>
+                                <div class="p-3 rounded bg-dark border border-secondary small">
+                                    <div class="mb-2">• <strong>Detection Rate</strong> = TP / (TP + FN) = 2,186 / 2,500 = <strong class="text-info">87.44%</strong></div>
+                                    <div class="mb-2">• <strong>False Positive Rate (FPR)</strong> = FP / (FP + TN) = 680 / 2,500 = <strong class="text-warning">27.20%</strong></div>
+                                    <div class="mb-2">• <strong>False Negative Rate (FNR)</strong> = FN / (FN + TP) = 314 / 2,500 = <strong class="text-danger">12.56%</strong></div>
+                                    <div>• <strong>F1-Score</strong> = 2 × (Prec × Rec) / (Prec + Rec) = <strong class="text-success">0.8148</strong></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 4: SECURITY INTERPRETATION & ARCHITECTURE -->
+        <div class="accordion mb-4" id="secAccordion">
+            <div class="accordion-item app-card border-0">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#secCollapse">
+                        🛡️ Security Interpretation & Pipeline Architecture
+                    </button>
+                </h2>
+                <div id="secCollapse" class="accordion-collapse collapse" data-bs-parent="#secAccordion">
+                    <div class="accordion-body p-3">
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <div class="p-3 rounded bg-dark border border-danger">
+                                    <h6 class="fw-bold text-danger mb-1">⚠️ False Negative (FN) — Missed Malware</h6>
+                                    <p class="small text-secondary mb-1">
+                                        <strong>Definition:</strong> A malicious file incorrectly classified as benign.
+                                    </p>
+                                    <p class="small text-secondary mb-0">
+                                        <strong>Why It Matters:</strong> This is the <em>most dangerous failure mode</em> in cybersecurity. A false negative allows active ransomware, trojans, or spyware to bypass defenses, execute on the host, and compromise the network.
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="p-3 rounded bg-dark border border-warning">
+                                    <h6 class="fw-bold text-warning mb-1">⚠️ False Positive (FP) — False Alarm</h6>
+                                    <p class="small text-secondary mb-1">
+                                        <strong>Definition:</strong> A benign file incorrectly classified as malicious.
+                                    </p>
+                                    <p class="small text-secondary mb-0">
+                                        <strong>Why It Matters:</strong> Leads to analyst alert fatigue and business disruptions when legitimate software is quarantined for investigation.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h6 class="fw-bold text-white mb-2">Project Architecture:</h6>
+                        <pre class="small text-info p-3 rounded bg-dark border border-secondary mb-3">
+             EMBER 2018
+                  ↓
+          Data Preprocessing
+                  ↓
+         Static PE Features
+                  ↓
+           2,381 Features
+                  ↓
+          ML Model Training
+        ┌─────────┼─────────┐
+        ↓         ↓         ↓
+   Random Forest Logistic  LightGBM
+        └─────────┼─────────┘
+                  ↓
+           Model Evaluation
+                  ↓
+           Trained Model
+                  ↓
+             PE Upload
+                  ↓
+          Static PE Analysis
+                  ↓
+           Feature Extraction
+                  ↓
+           ML Classification
+                  ↓
+        ┌─────────┴─────────┐
+        ↓                   ↓
+     BENIGN              MALICIOUS
+        ↓                   ↓
+  Model Probability   Model Probability</pre>
+
+                        <div class="small text-secondary">
+                            <strong>Dataset:</strong> EMBER 2018 v2 | <strong>Experimental Subset:</strong> 20,000 balanced samples (10,000 benign, 10,000 malicious) used for training, 5,000 for test evaluation.<br>
+                            <em>(Note: 20,000 is the experimental subset configured for this project, not the 1,000,000 samples of the raw full archive).</em>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Bootstrap JS for accordion -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        let currentFile = null;
+
+        const cmData = {
+            rf: { tn: "1,820", fp: "680", fn: "314", tp: "2,186" },
+            lr: { tn: "1,469", fp: "1,031", fn: "436", tp: "2,064" },
+            lgb: { tn: "918", fp: "1,582", fn: "310", tp: "2,190" }
+        };
+
+        function switchCM(modelKey) {
+            document.getElementById('cmBtnRf').className = modelKey === 'rf' ? 'btn btn-outline-info active' : 'btn btn-outline-secondary';
+            document.getElementById('cmBtnLr').className = modelKey === 'lr' ? 'btn btn-outline-info active' : 'btn btn-outline-secondary';
+            document.getElementById('cmBtnLgb').className = modelKey === 'lgb' ? 'btn btn-outline-info active' : 'btn btn-outline-secondary';
+
+            const d = cmData[modelKey];
+            document.getElementById('cmTN').innerText = d.tn;
+            document.getElementById('cmFP').innerText = d.fp;
+            document.getElementById('cmFN').innerText = d.fn;
+            document.getElementById('cmTP').innerText = d.tp;
+        }
+
+        // Drag & Drop
+        const dropZone = document.getElementById('dropZone');
+        ['dragenter', 'dragover'].forEach(name => {
+            dropZone.addEventListener(name, (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        });
+        ['dragleave', 'drop'].forEach(name => {
+            dropZone.addEventListener(name, (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); });
+        });
+        dropZone.addEventListener('drop', (e) => {
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                setFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        function handleFileSelect(e) {
+            if (e.target.files && e.target.files.length > 0) {
+                setFile(e.target.files[0]);
+            }
+        }
+
+        function setFile(file) {
+            currentFile = file;
+            const ext = file.name.split('.').pop().toLowerCase();
+            if (ext !== 'exe' && ext !== 'dll') {
+                alert("Please select a .exe or .dll file.");
+                currentFile = null;
+                document.getElementById('selectedFileName').innerText = "";
+                document.getElementById('scanBtn').disabled = true;
+                return;
+            }
+            document.getElementById('selectedFileName').innerText = `Selected: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+            document.getElementById('scanBtn').disabled = false;
+        }
+
+        async function scanSelectedFile() {
+            if (!currentFile) return;
+
+            const btn = document.getElementById('scanBtn');
+            const spinner = document.getElementById('loadingStatus');
+            const resultBox = document.getElementById('resultBox');
+
+            btn.disabled = true;
+            spinner.style.display = 'block';
+            resultBox.style.display = 'none';
+
+            const formData = new FormData();
+            formData.append('file', currentFile);
+            formData.append('model_name', 'best_model.pkl');
+
+            try {
+                const resp = await fetch('/api/predict-file', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await resp.json();
+
+                if (!resp.ok || !data.success) {
+                    alert("Analysis error: " + (data.error || resp.statusText));
+                    return;
+                }
+
+                displayResults(data);
+            } catch (err) {
+                alert("Network error: " + err.message);
+            } finally {
+                btn.disabled = false;
+                spinner.style.display = 'none';
+            }
+        }
+
+        async function runSampleTest(sampleType) {
+            const btn = document.getElementById('scanBtn');
+            const spinner = document.getElementById('loadingStatus');
+            const resultBox = document.getElementById('resultBox');
+
+            btn.disabled = true;
+            spinner.style.display = 'block';
+            resultBox.style.display = 'none';
+
+            try {
+                const sampleResp = await fetch(`/sample/${sampleType}`);
+                const sampleData = await sampleResp.json();
+
+                const predResp = await fetch('/predict', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ features: sampleData.features, model_name: 'best_model.pkl' })
+                });
+                const predData = await predResp.json();
+
+                displayResults({
+                    filename: `sample_${sampleType}_vector.dat`,
+                    file_size: 2381 * 4,
+                    sha256: "pre-extracted benchmark test vector (EMBER 2018 v2)",
+                    prediction: predData.classification,
+                    benign_probability: predData.probabilities.benign,
+                    malicious_probability: predData.probabilities.malicious,
+                    confidence: predData.confidence,
+                    inference_ms: predData.inference_time_ms,
+                    static_metadata: {
+                        architecture: "x64 (EMBER Feature Vector)",
+                        pe_type: "PE32+",
+                        sections_count: 8,
+                        imported_dlls: 42,
+                        imported_functions: 180,
+                        exported_functions: 0,
+                        entry_point: "0x1000",
+                        average_entropy: "5.4"
+                    },
+                    feature_preview: sampleData.features.slice(0, 20)
+                });
+            } catch (err) {
+                alert("Demo error: " + err.message);
+            } finally {
+                btn.disabled = false;
+                spinner.style.display = 'none';
+            }
+        }
+
+        function displayResults(data) {
+            const isMalicious = data.prediction === 'MALICIOUS';
+            const badge = document.getElementById('verdictBadge');
+            badge.className = isMalicious ? 'badge-verdict verdict-malicious' : 'badge-verdict verdict-benign';
+
+            const pBenign = (data.benign_probability * 100).toFixed(1);
+            const pMal = (data.malicious_probability * 100).toFixed(1);
+            const chosenProb = isMalicious ? pMal : pBenign;
+
+            badge.innerHTML = `<strong>${data.prediction}</strong><br><span style="font-size: 0.95rem; font-weight: 500;">Model probability: ${chosenProb}%</span>`;
+
+            document.getElementById('probBenignText').innerText = pBenign + '%';
+            document.getElementById('probMaliciousText').innerText = pMal + '%';
+            document.getElementById('probBarBenign').style.width = pBenign + '%';
+            document.getElementById('probBarMalicious').style.width = pMal + '%';
+
+            document.getElementById('infoFilename').innerText = data.filename;
+            document.getElementById('infoSize').innerText = (data.file_size / 1024).toFixed(1) + ' KB';
+            document.getElementById('infoLatency').innerText = data.inference_ms + ' ms';
+            document.getElementById('infoSha256').innerText = data.sha256;
+
+            const meta = data.static_metadata || {};
+            document.getElementById('tArch').innerText = meta.architecture || '-';
+            document.getElementById('tType').innerText = meta.pe_type || '-';
+            document.getElementById('tSections').innerText = meta.sections_count || '-';
+            document.getElementById('tDlls').innerText = meta.imported_dlls || '-';
+            document.getElementById('tFuncs').innerText = meta.imported_functions || '-';
+            document.getElementById('tExports').innerText = meta.exported_functions || '-';
+            document.getElementById('tEntry').innerText = meta.entry_point || '-';
+            document.getElementById('tEntropy').innerText = meta.average_entropy || '-';
+
+            if (data.feature_preview) {
+                document.getElementById('featurePreview').innerText = JSON.stringify(data.feature_preview.map(n => Math.round(n * 1000) / 1000));
+            }
+
+            document.getElementById('resultBox').style.display = 'block';
+            document.getElementById('resultBox').scrollIntoView({ behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>

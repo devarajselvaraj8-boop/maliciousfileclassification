@@ -1,0 +1,49 @@
+# Virtual environment
+.venv/
+venv/
+env/
+ENV/
+
+# Python cache & artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+build/
+dist/
+*.egg-info/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+*-checkpoint.ipynb
+
+# Dataset binaries and raw feature dumps (> 100MB)
+dataset/ember_dataset_2018_2.tar*
+dataset/ember2018/*.jsonl
+dataset/ember2018/*.dat
+dataset/ember2018/ember_model_2018.txt
+dataset/ember2018/*.tar*
+*.jsonl
+*.dat
+*.tar
+*.tar.bz2
+*.tar.gz
+*.zip
+
+# Operating System files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+
+# IDE / Editor configuration
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporary test executables & uploads
+temp_upload_*
+test_benign.exe
+*.tmp

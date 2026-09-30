@@ -1,0 +1,107 @@
+{
+  "project": "MLCS-HACK-16 — Malicious File Classification",
+  "theme": "Machine Learning for Cybersecurity",
+  "dataset": {
+    "name": "EMBER 2018 v2",
+    "feature_representation": "Static Windows PE features",
+    "feature_dimension": 2381,
+    "train_samples": 20000,
+    "test_samples": 5000,
+    "note": "20,000 is the balanced experimental subset used by this project, not the total size of the original EMBER dataset (which contains 1,000,000 samples).",
+    "class_distribution_train": {
+      "benign": 10000,
+      "malicious": 10000
+    },
+    "class_distribution_test": {
+      "benign": 2500,
+      "malicious": 2500
+    }
+  },
+  "selection_metric": "F1-Score and Recall on malicious class (minimizing False Negatives while controlling False Positives)",
+  "best_model": {
+    "key": "random_forest",
+    "name": "Random Forest",
+    "filename": "best_model.pkl",
+    "use_scaled": false
+  },
+  "models": {
+    "random_forest": {
+      "name": "Random Forest",
+      "filename": "random_forest.pkl",
+      "use_scaled": false,
+      "train_time_sec": 4.30,
+      "infer_time_sec": 0.08,
+      "accuracy": 0.8012,
+      "precision": 0.7627,
+      "recall": 0.8744,
+      "detection_rate": 0.8744,
+      "f1_score": 0.8148,
+      "roc_auc": 0.8794,
+      "false_positive_rate": 0.2720,
+      "false_negative_rate": 0.1256,
+      "confusion_matrix": {
+        "TN": 1820,
+        "FP": 680,
+        "FN": 314,
+        "TP": 2186
+      }
+    },
+    "logistic_regression": {
+      "name": "Logistic Regression",
+      "filename": "logistic_regression.pkl",
+      "use_scaled": true,
+      "train_time_sec": 7.13,
+      "infer_time_sec": 0.03,
+      "accuracy": 0.7066,
+      "precision": 0.6669,
+      "recall": 0.8256,
+      "detection_rate": 0.8256,
+      "f1_score": 0.7378,
+      "roc_auc": 0.7812,
+      "false_positive_rate": 0.4124,
+      "false_negative_rate": 0.1744,
+      "confusion_matrix": {
+        "TN": 1469,
+        "FP": 1031,
+        "FN": 436,
+        "TP": 2064
+      }
+    },
+    "lightgbm": {
+      "name": "LightGBM",
+      "filename": "lightgbm.pkl",
+      "use_scaled": false,
+      "train_time_sec": 7.81,
+      "infer_time_sec": 0.03,
+      "accuracy": 0.6216,
+      "precision": 0.5806,
+      "recall": 0.8760,
+      "detection_rate": 0.8760,
+      "f1_score": 0.6983,
+      "roc_auc": 0.6764,
+      "false_positive_rate": 0.6328,
+      "false_negative_rate": 0.1240,
+      "confusion_matrix": {
+        "TN": 918,
+        "FP": 1582,
+        "FN": 310,
+        "TP": 2190
+      }
+    }
+  },
+  "explainable_ai": {
+    "method": "Random Forest Gini Feature Importance",
+    "top_features": [
+      {"rank": 1, "index": 626, "name": "header[0]", "category": "COFF Timestamp", "importance": 0.04226, "description": "COFF compilation timestamp anomaly"},
+      {"rank": 2, "index": 637, "name": "header[11]", "category": "Optional Header Subsystem", "importance": 0.01856, "description": "Subsystem and Major Image Version"},
+      {"rank": 3, "index": 506, "name": "byteentropy[250]", "category": "Byte Entropy Histogram", "importance": 0.01768, "description": "High-entropy code distribution (packing/compression indicator)"},
+      {"rank": 4, "index": 502, "name": "byteentropy[246]", "category": "Byte Entropy Histogram", "importance": 0.01381, "description": "High-entropy block frequency"},
+      {"rank": 5, "index": 499, "name": "byteentropy[243]", "category": "Byte Entropy Histogram", "importance": 0.01351, "description": "Entropy transition frequency"},
+      {"rank": 6, "index": 90, "name": "histogram[90]", "category": "Byte Histogram (0x5A)", "importance": 0.01312, "description": "Frequency of byte 0x5A ('Z' in 'MZ' header)"},
+      {"rank": 7, "index": 151, "name": "histogram[151]", "category": "Byte Histogram (0x97)", "importance": 0.01189, "description": "Frequency of byte 0x97"},
+      {"rank": 8, "index": 501, "name": "byteentropy[245]", "category": "Byte Entropy Histogram", "importance": 0.01162, "description": "High entropy bin density"},
+      {"rank": 9, "index": 510, "name": "byteentropy[254]", "category": "Byte Entropy Histogram", "importance": 0.01150, "description": "Maximum entropy bin (encrypted payload indicator)"},
+      {"rank": 10, "index": 596, "name": "strings[84]", "category": "Strings Info", "importance": 0.01115, "description": "Printable string entropy and length distribution"}
+    ]
+  }
+}
